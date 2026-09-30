@@ -21,7 +21,7 @@ class ScanWorker(QObject):
     def run(self) -> None:
         try:
             report: DesktopScanResult = scan_desktop(self.path, self.policy)
-        except Exception as error:  # Surface a safe message; never show a traceback in the UI.
-            self.failed.emit(f"{type(error).__name__}: {error}")
+        except Exception:  # Keep target-dependent exception details out of the GUI.
+            self.failed.emit("Scan failed unexpectedly.")
         else:
             self.completed.emit(report)

@@ -2,6 +2,12 @@
 
 StatGuard Desktop is a Windows GUI companion for the **StatGuard v1.0.0** static analysis engine. Select a Python file, Jupyter Notebook, or project folder, configure a scan, review findings, and export HTML, JSON, or SARIF reports.
 
+## Windows portable build
+
+The current local development build targets **Windows 10/11, 64-bit AMD64**. Double-click `StatGuardDesktop.exe` from the portable ZIP to start; Python and a separate StatGuard installation are not required. This repository does not yet publish a Desktop download. The development build is unsigned, so Windows may show an unknown-publisher warning. Do not disable Defender or SmartScreen to run it. There is no auto-update, telemetry, installer, or network upload. Scans are static: submitted Python and Notebook code is not executed, and Notebook output is not analyzed.
+
+The project version remains `0.1.0.dev0`; the portable RC directory label is not a final release version. See [Windows distribution notes](docs/windows-distribution.md) for the platform scope and local packaging checks. Large scans cannot currently be cancelled.
+
 It is not a second analyzer. The application uses the exact v1.0.0 wheel from the core project's GitHub Release and does not fetch PyPI's latest StatGuard package. Core configuration, rule registry, scanning, threshold evaluation, and reporters are accessed through one adapter.
 
 ## Use
@@ -56,11 +62,12 @@ The output is `dist\StatGuardDesktop.exe`. The PyInstaller bundle includes the p
 
 The build currently constrains PySide6 to the tested 6.8 series (`>=6.8.3,<6.9`): newer Qt wheels did not load in the validated one-file PyInstaller environment. Expanding the Qt range requires repeating the frozen-executable launch smoke test.
 
-The executable supports hidden packaging smoke checks used by maintainers:
+The executable supports hidden packaging checks used by maintainers:
 
 ```powershell
 .\dist\StatGuardDesktop.exe --smoke-test .\desktop-smoke.json
 .\dist\StatGuardDesktop.exe --scan-smoke .\sample.py .\scan-smoke.json
+.\dist\StatGuardDesktop.exe --engine-info .\engine-info.json
 ```
 
 ## Core project

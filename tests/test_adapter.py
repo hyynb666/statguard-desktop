@@ -67,3 +67,35 @@ def test_unknown_engine_registry_is_rejected(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(adapter, "default_registry", lambda: object())
     with pytest.raises(DesktopIntegrationError, match="invalid default rule registry"):
         adapter.scan_metadata()
+
+
+def test_broken_inputs_unsupported_file_and_empty_directory_are_safe(tmp_path) -> None:
+    broken_python = tmp_path / "bad.py"
+    broken_python.write_text("def broken(:\n", encoding="utf-8")
+    broken_notebook = tmp_path / "bad.ipynb"
+    broken_notebook.write_text("{broken json", encoding="utf-8")
+    unsupported = tmp_path / "input.txt"
+    unsupported.write_text("plain text", encoding="utf-8")
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    for path in (broken_python, broken_notebook, unsupported):
+        report = adapter.scan_path(path)
+        assert report.analysis_errors
+    assert not adapter.scan_path(empty).analysis_errors
+
+
+def test_unicode_and_space_paths_scan_without_encoding_loss(tmp_path) -> None:
+    target = tmp_path / "项目 with spaces (1)"
+    target.mkdir()
+    source = target / "分析.py"
+    source.write_text("# 中文注释 🧪\nvalue = 1\n", encoding="utf-8")
+    report = adapter.scan_path(source)
+    assert report.results[0].path == str(source)
+
+
+def test_two_hundred_file_directory_scan_returns_every_input(tmp_path) -> None:
+    for index in range(200):
+        (tmp_path / f"source-{index:03}.py").write_text("value = 1\n", encoding="utf-8")
+    report = adapter.scan_path(tmp_path)
+    assert len(report.results) == 200
+    assert not report.analysis_errors

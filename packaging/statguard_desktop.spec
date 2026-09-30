@@ -10,7 +10,10 @@ a = Analysis(
     [str(project_root / "src" / "statguard_desktop" / "__main__.py")],
     pathex=[str(project_root / "src")],
     binaries=[],
-    datas=copy_metadata("statguard"),
+    datas=[
+        *copy_metadata("statguard"),
+        (str(project_root / "assets" / "statguard-desktop.ico"), "assets"),
+    ],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -27,6 +30,8 @@ exe = EXE(
     a.datas,
     [],
     name="StatGuardDesktop",
+    icon=str(project_root / "assets" / "statguard-desktop.ico"),
+    version=str(project_root / "packaging" / "version_info.txt"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -39,4 +44,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    contents_directory="_internal",
 )

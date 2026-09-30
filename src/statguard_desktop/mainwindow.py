@@ -5,7 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QItemSelection, Qt, QThread, QUrl, Slot
-from PySide6.QtGui import QDesktopServices, QStandardItem, QStandardItemModel
+from PySide6.QtGui import (
+    QAction,
+    QDesktopServices,
+    QIcon,
+    QKeySequence,
+    QStandardItem,
+    QStandardItemModel,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -49,6 +56,7 @@ from statguard_desktop.policy import (
     DesktopScanPolicy,
     validate_excludes,
 )
+from statguard_desktop.resources import resource_path
 from statguard_desktop.workers import ScanWorker
 
 
@@ -75,8 +83,9 @@ class MainWindow(QMainWindow):
         metadata = scan_metadata()
         self.rules = rule_metadata()
         self.setWindowTitle("StatGuard Desktop")
+        self.setWindowIcon(QIcon(str(resource_path("assets/statguard-desktop.ico"))))
         self.resize(1250, 900)
-        self.setMinimumSize(980, 700)
+        self.setMinimumSize(900, 600)
         self.last_result: DesktopScanResult | None = None
         self.last_html_path: Path | None = None
         self._thread: QThread | None = None
@@ -86,6 +95,7 @@ class MainWindow(QMainWindow):
         self._configuration_valid = True
         self.setAcceptDrops(True)
         self._build_ui(metadata["statguard_version"])
+        self._build_menus()
         self.custom_config_path.setEnabled(False)
         self.browse_config_button.setEnabled(False)
         self._load_configuration()
@@ -133,6 +143,13 @@ class MainWindow(QMainWindow):
         self.scan_button.setObjectName("scanButton")
         self.scan_button.setDefault(True)
         self.clear_button = QPushButton("Clear")
+        for button in (
+            self.browse_file_button,
+            self.browse_folder_button,
+            self.scan_button,
+            self.clear_button,
+        ):
+            button.setAccessibleName(button.text().replace("…", ""))
         path_row.addWidget(self.path_input, 1)
         path_row.addWidget(self.browse_file_button)
         path_row.addWidget(self.browse_folder_button)
@@ -359,6 +376,50 @@ class MainWindow(QMainWindow):
         self._update_rule_count()
         self._update_filter_count()
 
+    def _build_menus(self) -> None:
+        file_menu = self.menuBar().addMenu("&File")
+        self._menu_actions = {}
+        for key, label, shortcut, slot in (
+            ("open_file", "Browse &File…", "Ctrl+O", self._browse_file),
+            ("open_folder", "Browse F&older…", "Ctrl+Shift+O", self._browse_folder),
+            ("clear", "&Clear", "Ctrl+L", self.clear_target),
+        ):
+            action = QAction(label, self)
+            action.setShortcut(QKeySequence(shortcut))
+            action.triggered.connect(slot)
+            file_menu.addAction(action)
+            self._menu_actions[key] = action
+        file_menu.addSeparator()
+        exit_action = QAction("E&xit", self)
+        exit_action.setShortcut(QKeySequence("Ctrl+Q"))
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        self._menu_actions["exit"] = exit_action
+        search_action = QAction("Focus &Search", self)
+        search_action.setShortcut(QKeySequence("Ctrl+F"))
+        search_action.triggered.connect(self.search_input.setFocus)
+        file_menu.addAction(search_action)
+        self._menu_actions["search"] = search_action
+        help_menu = self.menuBar().addMenu("&Help")
+        about_action = QAction("&About StatGuard Desktop", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
+        self._menu_actions["about"] = about_action
+
+    @Slot()
+    def _show_about(self) -> None:
+        metadata = scan_metadata()
+        QMessageBox.about(
+            self,
+            "About StatGuard Desktop",
+            "<b>StatGuard Desktop</b><br>"
+            f"Desktop {metadata['desktop_version']}<br>"
+            f"Engine StatGuard {metadata['statguard_version']}<br><br>"
+            "Static analysis for statistical Python workflows.<br>"
+            "MIT License<br><br>"
+            '<a href="https://github.com/hyynb666/statguard">StatGuard Core project</a>',
+        )
+
     @Slot()
     def _browse_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -518,6 +579,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def start_scan(self) -> None:
+        if self._thread is not None:
+            return
         if not self._configuration_valid:
             QMessageBox.warning(
                 self,
@@ -577,7 +640,6 @@ class MainWindow(QMainWindow):
         self._populate_report(result)
         for button in self._export_buttons:
             button.setEnabled(True)
-        self._set_scanning(False)
         self.progress.setRange(0, 1)
         self.progress.setValue(1)
         errors = bool(result.report.analysis_errors)
@@ -597,7 +659,6 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _scan_failed(self, message: str) -> None:
         self.last_result = None
-        self._set_scanning(False)
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         self.progress.setFormat("Scan failed")
@@ -615,6 +676,7 @@ class MainWindow(QMainWindow):
             self._worker = None
             self._thread = None
             thread.deleteLater()
+            self._set_scanning(False)
 
     def _populate_report(self, result: DesktopScanResult | ScanReport) -> None:
         if isinstance(result, ScanReport):
@@ -650,8 +712,13 @@ class MainWindow(QMainWindow):
         self._apply_filters()
         self.findings_view.resizeColumnsToContents()
         self.empty_state.setVisible(not report.findings)
+        no_files = (
+            Path(result.target_path).is_dir() and not report.results and not report.analysis_errors
+        )
         self.empty_state.setText(
-            "No findings reported. A clean scan does not establish statistical correctness."
+            "No supported .py or .ipynb files found."
+            if no_files
+            else "No findings reported. A clean scan does not establish statistical correctness."
         )
         messages: list[str] = []
         for error in report.analysis_errors:
@@ -669,7 +736,11 @@ class MainWindow(QMainWindow):
         for notice in report.scan_notices:
             messages.append(f"NOTICE [{notice.code}] {notice.path}: {notice.message}")
         self.messages.setPlainText(
-            "\n".join(messages) if messages else "No scan errors or notices."
+            "\n".join(messages)
+            if messages
+            else "No supported .py or .ipynb files found."
+            if no_files
+            else "No scan errors or notices."
         )
 
     def _update_filter_choices(self, report) -> None:

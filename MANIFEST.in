@@ -1,4 +1,7 @@
 include CONTRIBUTING.md
 recursive-include packaging *.spec
-recursive-include scripts *.ps1
+recursive-include packaging *.txt
+recursive-include scripts *.ps1 *.py
+recursive-include assets *.ico *.svg
+recursive-include docs *.md
 recursive-include tests *.py

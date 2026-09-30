@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QApplication
@@ -41,6 +43,32 @@ def test_filter_model_combines_rule_severity_confidence_file_and_search() -> Non
     assert proxy.rowCount() == 1
     proxy.set_filters(search_text="no match")
     assert proxy.rowCount() == 0
+    app.processEvents()
+
+
+def test_filter_model_handles_large_finding_sets() -> None:
+    app = QApplication.instance() or QApplication([])
+    source = QStandardItemModel(0, 6)
+    for index in range(500):
+        rule_id = "ML001" if index % 2 == 0 else "ST001"
+        row = [
+            QStandardItem(value)
+            for value in (rule_id, "Warning", "Medium", f"src/{index}.py", str(index), "finding")
+        ]
+        row[0].setData(
+            SimpleNamespace(
+                message="finding",
+                explanation="test explanation",
+                suggestion="test suggestion",
+                evidence="potential statistical risk",
+            ),
+            Qt.ItemDataRole.UserRole,
+        )
+        source.appendRow(row)
+    proxy = FindingFilterProxyModel()
+    proxy.setSourceModel(source)
+    proxy.set_filters(rule_id="ST001", search_text="finding")
+    assert proxy.rowCount() == 250
     app.processEvents()
 
 

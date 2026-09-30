@@ -41,7 +41,213 @@ def test_window_initial_state_and_expected_controls(application) -> None:
     assert window.findings_view.isEnabled() is False
     window._set_scanning(False)
     assert window.findChild(QPushButton, "scanButton").isEnabled() is True
+    assert {action for action in window._menu_actions} == {
+        "open_file",
+        "open_folder",
+        "clear",
+        "exit",
+        "search",
+        "about",
+    }
+    assert window._menu_actions["open_file"].shortcut().toString() == "Ctrl+O"
+    assert window._menu_actions["open_folder"].shortcut().toString() == "Ctrl+Shift+O"
+    assert window._menu_actions["clear"].shortcut().toString() == "Ctrl+L"
+    assert window._menu_actions["exit"].shortcut().toString() == "Ctrl+Q"
+    assert window._menu_actions["search"].shortcut().toString() == "Ctrl+F"
+    assert not window.windowIcon().isNull()
     window.close()
+
+
+def test_repeated_scans_replace_previous_report(application, tmp_path) -> None:
+    from PySide6.QtCore import QEventLoop, QTimer
+
+    from tests.helpers import SAFE_ML001
+
+    risky = tmp_path / "first.py"
+    safe = tmp_path / "second.py"
+    risky.write_text(RISKY_ML001, encoding="utf-8")
+    safe.write_text(SAFE_ML001, encoding="utf-8")
+    window = MainWindow()
+
+    def run_scan(path: Path) -> None:
+        window.path_input.setText(str(path))
+        window.start_scan()
+        first_thread = window._thread
+        window.start_scan()
+        assert window._thread is first_thread
+        loop = QEventLoop()
+        timer = QTimer()
+        timer.timeout.connect(lambda: loop.quit() if window._thread is None else None)
+        timer.start(20)
+        QTimer.singleShot(15000, loop.quit)
+        loop.exec()
+        timer.stop()
+        assert window._thread is None
+
+    run_scan(risky)
+    assert "ML001" in {item.rule_id for item in window.last_report.findings}
+    run_scan(safe)
+    assert window.last_report.results[0].path == str(safe)
+    safe_rule_ids = {item.rule_id for item in window.last_report.findings}
+    assert "ML001" not in safe_rule_ids
+    assert window.findings_model.rowCount() == len(window.last_report.findings)
+    run_scan(risky)
+    assert window.last_report.results[0].path == str(risky)
+    assert window.findings_model.rowCount() == len(window.last_report.findings)
+    window.close()
+
+
+def test_worker_error_message_does_not_leak_exception_text(monkeypatch) -> None:
+    from statguard_desktop import workers
+
+    def fail_with_private_detail(*_args):
+        raise RuntimeError("private path")
+
+    monkeypatch.setattr(workers, "scan_desktop", fail_with_private_detail)
+    worker = workers.ScanWorker("secret/input.py")
+    messages = []
+    worker.failed.connect(messages.append)
+    worker.run()
+    assert messages == ["Scan failed unexpectedly."]
+
+
+def test_gui_recovers_after_worker_failure(application, tmp_path, monkeypatch) -> None:
+    from PySide6.QtCore import QEventLoop, QTimer
+
+    from statguard_desktop import workers
+
+    source = tmp_path / "input.py"
+    source.write_text("pass\n", encoding="utf-8")
+
+    def fail_scan(*_args):
+        raise RuntimeError("private project detail")
+
+    monkeypatch.setattr(workers, "scan_desktop", fail_scan)
+    window = MainWindow()
+    window.path_input.setText(str(source))
+    window.start_scan()
+    loop = QEventLoop()
+    timer = QTimer()
+    timer.timeout.connect(lambda: loop.quit() if window._thread is None else None)
+    timer.start(20)
+    QTimer.singleShot(15000, loop.quit)
+    loop.exec()
+    timer.stop()
+    assert window._thread is None
+    assert window.scan_button.isEnabled()
+    assert "Scan failed: Scan failed unexpectedly." in window.messages.toPlainText()
+    assert "private project detail" not in window.messages.toPlainText()
+    window.close()
+
+
+def test_startup_error_boundary_shows_safe_feedback(application, monkeypatch) -> None:
+    from statguard_desktop import __main__ as entry
+
+    messages = []
+    monkeypatch.setattr(QMessageBox, "critical", lambda *_args: messages.append(_args[-1]))
+    entry._show_startup_error(RuntimeError("secret user directory"))
+    assert len(messages) == 1
+    assert "unexpected startup error" in messages[0]
+    assert "secret user directory" not in messages[0]
+
+
+def test_startup_error_uses_native_fallback_if_qt_dialog_fails(application, monkeypatch) -> None:
+    from statguard_desktop import __main__ as entry
+
+    messages = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "critical",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("Qt display error")),
+    )
+    monkeypatch.setattr(entry, "_fallback_startup_error", messages.append)
+    entry._show_startup_error(RuntimeError("private startup data"))
+    assert messages == ["An unexpected startup error occurred (RuntimeError)."]
+
+
+def test_main_catches_unexpected_gui_startup_failure(application, monkeypatch) -> None:
+    from statguard_desktop import __main__ as entry
+
+    messages = []
+
+    def fail_startup():
+        raise RuntimeError("private environment data")
+
+    monkeypatch.setattr(entry, "_run_gui", fail_startup)
+    monkeypatch.setattr(QMessageBox, "critical", lambda *_args: messages.append(_args[-1]))
+    assert entry.main([]) == 2
+    assert len(messages) == 1
+    assert "unexpected startup error" in messages[0]
+    assert "private environment data" not in messages[0]
+
+
+def test_broken_python_notebook_and_unsupported_input_keep_window_alive(
+    application, tmp_path
+) -> None:
+    from statguard_desktop.adapter import scan_desktop
+
+    python_file = tmp_path / "broken.py"
+    python_file.write_text("def invalid(:\n", encoding="utf-8")
+    notebook_file = tmp_path / "broken.ipynb"
+    notebook_file.write_text("{broken", encoding="utf-8")
+    unsupported = tmp_path / "unsupported.txt"
+    unsupported.write_text("text", encoding="utf-8")
+    window = MainWindow()
+    for path in (python_file, notebook_file, unsupported):
+        result = scan_desktop(path)
+        window._populate_report(result)
+        assert result.report.analysis_errors
+        assert window.windowTitle() == "StatGuard Desktop"
+        assert "ERROR" in window.messages.toPlainText()
+    window.close()
+
+
+def test_about_dialog_displays_desktop_and_engine_versions(application, monkeypatch) -> None:
+    messages = []
+    monkeypatch.setattr(QMessageBox, "about", lambda *_args: messages.append(_args[-1]))
+    window = MainWindow()
+    window._show_about()
+    assert "Desktop 0.1.0.dev0" in messages[0]
+    assert "Engine StatGuard 1.0.0" in messages[0]
+    assert "MIT License" in messages[0]
+    assert "github.com/hyynb666/statguard" in messages[0]
+    window.close()
+
+
+def test_empty_project_has_explicit_supported_file_notice(application, tmp_path) -> None:
+    from statguard_desktop.adapter import scan_desktop
+
+    result = scan_desktop(tmp_path)
+    window = MainWindow()
+    window._populate_report(result)
+    assert window.empty_state.text() == "No supported .py or .ipynb files found."
+    assert "No supported .py or .ipynb files found" in window.messages.toPlainText()
+    window.close()
+
+
+def test_close_waits_for_active_scan_worker(application, tmp_path, monkeypatch, capfd) -> None:
+    import time
+
+    from statguard_desktop import workers
+    from statguard_desktop.adapter import scan_desktop
+
+    source = tmp_path / "closing.py"
+    source.write_text("pass\n", encoding="utf-8")
+    original = scan_desktop
+
+    def delayed_scan(*args, **kwargs):
+        time.sleep(0.15)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(workers, "scan_desktop", delayed_scan)
+    window = MainWindow()
+    window.path_input.setText(str(source))
+    window.start_scan()
+    thread = window._thread
+    assert thread is not None and thread.isRunning()
+    window.close()
+    assert not thread.isRunning()
+    assert "QThread: Destroyed while thread is still running" not in capfd.readouterr().err
 
 
 def test_finding_details_html_export_and_open(application, tmp_path, monkeypatch) -> None:
