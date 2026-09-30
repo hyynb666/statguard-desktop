@@ -18,6 +18,19 @@ def test_metadata_smoke_mode_contains_no_machine_paths(tmp_path) -> None:
     assert str(tmp_path) not in destination.read_text(encoding="utf-8")
 
 
+def test_engine_info_lists_every_pinned_rule_once_without_host_paths(tmp_path) -> None:
+    destination = tmp_path / "engine.json"
+    assert main(["--engine-info", str(destination)]) == 0
+    payload = json.loads(destination.read_text(encoding="utf-8"))
+    expected = [*(f"ML{i:03}" for i in range(1, 10)), "ST001", "ST002"]
+    assert payload == {
+        "desktop_version": "0.1.0.dev0",
+        "statguard_version": "1.0.0",
+        "enabled_rule_ids": expected,
+    }
+    assert str(tmp_path) not in destination.read_text(encoding="utf-8")
+
+
 def test_gui_smoke_mode_constructs_and_shows_window(tmp_path) -> None:
     destination = tmp_path / "gui.json"
     assert main(["--gui-smoke-test", str(destination)]) == 0
@@ -69,3 +82,16 @@ def test_notebook_scan_smoke_uses_code_cell_only(tmp_path) -> None:
     payload = json.loads(destination.read_text(encoding="utf-8"))
     assert "ML001" in {item["rule_id"] for item in payload["findings"]}
     assert payload["findings"][0]["cell"] == 1
+
+
+def test_packaged_report_smoke_writes_html_json_and_sarif(tmp_path) -> None:
+    source = tmp_path / "safe.py"
+    source.write_text(SAFE_ML001, encoding="utf-8")
+    output = tmp_path / "reports"
+    assert main(["--report-smoke", str(source), str(output)]) == 0
+    html = (output / "report.html").read_text(encoding="utf-8")
+    payload = json.loads((output / "report.json").read_text(encoding="utf-8"))
+    sarif = json.loads((output / "report.sarif").read_text(encoding="utf-8"))
+    assert "Content-Security-Policy" in html
+    assert payload["schema_version"] == "1.0"
+    assert sarif["version"] == "2.1.0"

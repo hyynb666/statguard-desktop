@@ -24,6 +24,9 @@ statguard-desktop = "statguard_desktop.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+statguard_desktop = ["assets/*.ico"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib", "-ra"]

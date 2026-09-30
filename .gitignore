@@ -4,6 +4,13 @@ __pycache__/
 .venv-installed/
 build/
 dist/
+release/
+build/build-info.json
+build/StatGuardDesktop.exe.sha256
+build/desktop-smoke.json
+build/engine-info.json
+build/portable-extracted-smoke/
+build/pyinstaller/
 *.egg-info/
 .pytest_cache/
 .test-tmp/

@@ -12,9 +12,10 @@ python -m ruff check .
 python -m ruff format --check .
 python -m build
 powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+powershell -ExecutionPolicy Bypass -File scripts\package_portable_windows.ps1
 ```
 
-Use `QT_QPA_PLATFORM=offscreen` for headless Qt tests. GUI changes should preserve responsive background scanning, read-only finding details, stable filtering, and Core-generated HTML, JSON, and SARIF output.
+Use `QT_QPA_PLATFORM=offscreen` for headless Qt tests. GUI changes should preserve responsive background scanning, safe worker cleanup, read-only finding details, stable filtering, and Core-generated HTML, JSON, and SARIF output. Productization builds must keep version `0.1.0.dev0`, pin the exact Core 1.0.0 wheel and PySide6 `>=6.8.3,<6.9`, and avoid deleting any output outside `build/pyinstaller` and the named executable.
 
 ## Scope
 

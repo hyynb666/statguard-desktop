@@ -269,6 +269,16 @@ def scan_metadata() -> dict[str, str]:
     }
 
 
+def engine_info_payload() -> dict[str, Any]:
+    """Return the pinned engine inventory without host or project details."""
+    _scanner, version, metadata = _engine_with_metadata()
+    return {
+        "desktop_version": desktop_version,
+        "statguard_version": version,
+        "enabled_rule_ids": sorted(item.rule_id for item in metadata),
+    }
+
+
 def scan_smoke_payload(path: str | Path) -> dict[str, Any]:
     """Run the same scan adapter used by the GUI and return a machine-readable summary."""
     report = scan_path(path)
