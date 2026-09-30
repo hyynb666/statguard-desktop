@@ -1,0 +1,1 @@
+"""StatGuard Desktop test package."""
