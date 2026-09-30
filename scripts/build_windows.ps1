@@ -71,10 +71,18 @@ try {
         throw "Executable engine inventory failed."
     }
     $inventory = Get-Content -LiteralPath (Join-Path $buildDir "engine-info.json") -Raw | ConvertFrom-Json
-    if ($inventory.enabled_rule_ids.Count -ne 11) { throw "Executable rule inventory is incomplete." }
+    $expectedRules = @("ML001", "ML002", "ML003", "ML004", "ML005", "ML006", "ML007", "ML008", "ML009", "ST001", "ST002")
+    if ($inventory.statguard_version -ne "1.0.0" -or ($inventory.enabled_rule_ids -join ",") -cne ($expectedRules -join ",")) {
+        throw "Executable engine version or rule inventory does not match the release baseline."
+    }
 
-    & $python scripts\write_build_info.py $exe (Join-Path $buildDir "build-info.json")
+    $buildInfoPath = Join-Path $buildDir "build-info.json"
+    & $python scripts\write_build_info.py $exe $buildInfoPath
     if ($LASTEXITCODE -ne 0) { throw "Could not write build metadata." }
+    $buildInfo = Get-Content -LiteralPath $buildInfoPath -Raw | ConvertFrom-Json
+    if ($buildInfo.desktop_version -ne "0.1.0" -or $buildInfo.statguard_version -ne "1.0.0") {
+        throw "Build metadata version does not match the release baseline."
+    }
     $length = (Get-Item -LiteralPath $exe).Length
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
     Write-Host "Built: $exe"

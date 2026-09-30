@@ -15,7 +15,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
 powershell -ExecutionPolicy Bypass -File scripts\package_portable_windows.ps1
 ```
 
-Use `QT_QPA_PLATFORM=offscreen` for headless Qt tests. GUI changes should preserve responsive background scanning, safe worker cleanup, read-only finding details, stable filtering, and Core-generated HTML, JSON, and SARIF output. Productization builds must keep version `0.1.0.dev0`, pin the exact Core 1.0.0 wheel and PySide6 `>=6.8.3,<6.9`, and avoid deleting any output outside `build/pyinstaller` and the named executable.
+Use `QT_QPA_PLATFORM=offscreen` for headless Qt tests. GUI changes should preserve responsive background scanning, safe worker cleanup, read-only finding details, stable filtering, and Core-generated HTML, JSON, and SARIF output. The v0.1.0 release pins the exact Core 1.0.0 wheel and PySide6 `>=6.8.3,<6.9`. Source package support is CPython 3.11–3.13; PySide6 6.8.3 declares Python `<3.14`. Windows packaging must avoid deleting any output outside `build/pyinstaller` and the named executable.
 
 ## Scope
 

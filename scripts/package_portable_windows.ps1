@@ -4,7 +4,7 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $exe = Join-Path $repo "dist\StatGuardDesktop.exe"
 $python = Join-Path $repo ".venv\Scripts\python.exe"
 $releaseRoot = Join-Path $repo "release"
-$packageName = "StatGuard-Desktop-0.1.0-rc"
+$packageName = "StatGuard-Desktop-0.1.0-windows-x64"
 $package = Join-Path $releaseRoot $packageName
 $zipPath = Join-Path $releaseRoot "$packageName.zip"
 $zipHashPath = "$zipPath.sha256"
@@ -49,7 +49,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $repo "LICENSE") -Destination (Join-Path $package "LICENSE.txt")
     $readme = @'
 StatGuard Desktop
-Windows portable release candidate
+Version 0.1.0 — first public Alpha release
 
 Start: Double-click StatGuardDesktop.exe.
 Scans Python .py files, Jupyter .ipynb files, and project folders.
@@ -58,7 +58,7 @@ Notebook output is not analyzed.
 Reports: HTML, JSON, and SARIF.
 Engine: StatGuard 1.0.0.
 Requirements: Windows 10/11, 64-bit. No Python installation is required.
-This development candidate is unsigned; Windows may identify an unknown publisher.
+This executable is not code-signed; Windows SmartScreen may show an unknown-publisher warning.
 No auto-update or telemetry is included.
 '@
     [System.IO.File]::WriteAllText((Join-Path $package "README.txt"), $readme.Trim() + "`r`n", [System.Text.UTF8Encoding]::new($false))
