@@ -2,6 +2,8 @@
 
 This repository is the separately maintained StatGuard Desktop companion. Keep it pinned to the exact StatGuard v1.0.0 release wheel unless a dedicated compatibility change is reviewed. Keep PySide6 within the tested 6.8 series unless a newer frozen build passes the packaged GUI launch test. Do not import or execute scanned modules, run Notebook cells, or inspect stored Notebook outputs.
 
+All StatGuard Core calls, including configuration loading, registry creation, scanning, threshold evaluation, and report rendering, belong in `statguard_desktop.adapter`. GUI code should only manage immutable policy snapshots and presentation. The project configuration selector intentionally checks the selected target's root (or selected file's parent) and does not walk ancestors. GUI overrides are temporary and must never write to project TOML files. Filtering and sorting must leave the stored full scan report unchanged; each export must render that last completed report without rescanning.
+
 ## Local checks
 
 ```powershell
@@ -12,8 +14,8 @@ python -m build
 powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
 ```
 
-Use `QT_QPA_PLATFORM=offscreen` for headless Qt tests. GUI changes should preserve responsive scanning, the read-only finding details, and core-generated HTML output.
+Use `QT_QPA_PLATFORM=offscreen` for headless Qt tests. GUI changes should preserve responsive background scanning, read-only finding details, stable filtering, and Core-generated HTML, JSON, and SARIF output.
 
 ## Scope
 
-Keep the desktop UI focused on path selection, scanning, summary/findings review, and HTML export. Rule selection, configuration editing, recent scans, auto-updates, and installers are outside the MVP. Do not change or publish the StatGuard core repository from this project.
+Keep the desktop UI focused on path selection, temporary scan policy, finding review, and local report export. Recent scans, auto-updates, installers, and code signing remain outside scope. Do not change or publish the StatGuard core repository from this project.
