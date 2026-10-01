@@ -24,7 +24,7 @@ def main() -> None:
         raise SystemExit(
             f"Desktop was imported from outside the active environment: {installation}"
         )
-    if statguard_desktop.__version__ != "0.1.0.dev0":
+    if statguard_desktop.__version__ != "0.1.0":
         raise SystemExit("Unexpected installed Desktop version.")
     metadata = scan_metadata()
     inventory = engine_info_payload()

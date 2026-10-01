@@ -12,7 +12,7 @@ def test_metadata_smoke_mode_contains_no_machine_paths(tmp_path) -> None:
     payload = json.loads(destination.read_text(encoding="utf-8"))
     assert payload == {
         "application": "StatGuard Desktop",
-        "desktop_version": "0.1.0.dev0",
+        "desktop_version": "0.1.0",
         "statguard_version": "1.0.0",
     }
     assert str(tmp_path) not in destination.read_text(encoding="utf-8")
@@ -24,7 +24,7 @@ def test_engine_info_lists_every_pinned_rule_once_without_host_paths(tmp_path) -
     payload = json.loads(destination.read_text(encoding="utf-8"))
     expected = [*(f"ML{i:03}" for i in range(1, 10)), "ST001", "ST002"]
     assert payload == {
-        "desktop_version": "0.1.0.dev0",
+        "desktop_version": "0.1.0",
         "statguard_version": "1.0.0",
         "enabled_rule_ids": expected,
     }

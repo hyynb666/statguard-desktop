@@ -54,7 +54,7 @@ def test_build_info_is_minimal_and_records_executable_hash(tmp_path) -> None:
         "architecture",
         "executable_sha256",
     }
-    assert payload["desktop_version"] == "0.1.0.dev0"
+    assert payload["desktop_version"] == "0.1.0"
     assert payload["statguard_version"] == "1.0.0"
     assert payload["executable_sha256"] == hashlib.sha256(b"test-executable").hexdigest()
     encoded = destination.read_text(encoding="utf-8")
@@ -78,7 +78,12 @@ def test_windows_version_resource_and_dependency_policy() -> None:
     ):
         assert expected in metadata
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    assert project["version"] == "0.1.0.dev0"
+    assert project["version"] == "0.1.0"
+    assert project["requires-python"] == ">=3.11,<3.14"
+    assert "Development Status :: 3 - Alpha" in project["classifiers"]
+    assert "Programming Language :: Python :: 3.11" in project["classifiers"]
+    assert "Programming Language :: Python :: 3.12" in project["classifiers"]
+    assert "Programming Language :: Python :: 3.13" in project["classifiers"]
     assert any(dep.startswith("PySide6>=6.8.3,<6.9") for dep in project["dependencies"])
     assert any("statguard-1.0.0-py3-none-any.whl" in dep for dep in project["dependencies"])
 

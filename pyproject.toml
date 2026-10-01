@@ -4,12 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "statguard-desktop"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "A Windows desktop companion for StatGuard v1.0.0"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = "MIT"
 license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "PySide6>=6.8.3,<6.9",
     "statguard @ https://github.com/hyynb666/statguard/releases/download/v1.0.0/statguard-1.0.0-py3-none-any.whl",

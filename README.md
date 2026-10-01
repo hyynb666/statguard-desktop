@@ -1,81 +1,35 @@
-# StatGuard Desktop
+# StatGuard Desktop v0.1.0
 
-StatGuard Desktop is a Windows GUI companion for the **StatGuard v1.0.0** static analysis engine. Select a Python file, Jupyter Notebook, or project folder, configure a scan, review findings, and export HTML, JSON, or SARIF reports.
+StatGuard Desktop v0.1.0 is the first public Alpha release of the **Windows desktop companion for StatGuard v1.0.0**. It packages the pinned static analysis engine into a standalone GUI for Python and Jupyter Notebook projects.
 
-## Windows portable build
+## Download
 
-The current local development build targets **Windows 10/11, 64-bit AMD64**. Double-click `StatGuardDesktop.exe` from the portable ZIP to start; Python and a separate StatGuard installation are not required. This repository does not yet publish a Desktop download. The development build is unsigned, so Windows may show an unknown-publisher warning. Do not disable Defender or SmartScreen to run it. There is no auto-update, telemetry, installer, or network upload. Scans are static: submitted Python and Notebook code is not executed, and Notebook output is not analyzed.
+Download the recommended portable ZIP from the [v0.1.0 release page](https://github.com/hyynb666/statguard-desktop/releases/tag/v0.1.0): **StatGuard-Desktop-0.1.0-windows-x64.zip**. Extract it and double-click `StatGuardDesktop.exe`. A standalone [`StatGuardDesktop.exe`](https://github.com/hyynb666/statguard-desktop/releases/download/v0.1.0/StatGuardDesktop.exe) is also available. The ZIP is recommended because it includes a README, MIT license, and checksums.
 
-The project version remains `0.1.0.dev0`; the portable RC directory label is not a final release version. See [Windows distribution notes](docs/windows-distribution.md) for the platform scope and local packaging checks. Large scans cannot currently be cancelled.
-
-It is not a second analyzer. The application uses the exact v1.0.0 wheel from the core project's GitHub Release and does not fetch PyPI's latest StatGuard package. Core configuration, rule registry, scanning, threshold evaluation, and reporters are accessed through one adapter.
+Requirements: **Windows 10/11, 64-bit x86_64/AMD64**. No Python installation or separate StatGuard installation is required. The executable is not code-signed; Windows SmartScreen may show an unknown-publisher warning. Do not disable Defender or SmartScreen.
 
 ## Use
 
-Start `StatGuardDesktop.exe` from a Windows build, choose a `.py` file, `.ipynb` file, or folder and press **Scan**. A target can also be dragged onto the window; dropping selects it but does not start a scan. Select a finding to inspect its rule, evidence, location, explanation, and suggestion, or copy the detail as plain text.
+1. Download and extract the portable ZIP.
+2. Double-click `StatGuardDesktop.exe`.
+3. Select or drop a `.py` file, `.ipynb` file, or project folder.
+4. Choose project, custom, or no configuration; enable or disable rules and set exclusions or a fail-on policy if desired.
+5. Scan, filter and search findings, inspect details, and export HTML, JSON schema 1.0, or SARIF 2.1.0.
 
-### Configuration and rule controls
+The GUI supports Python and Notebook file scans, recursive directory scans, drag and drop, rule and policy controls, finding filters/search, finding details, copy finding, and local HTML/JSON/SARIF export. It includes the 11 rules shipped with StatGuard Core 1.0.0 (ML001–ML009 and ST001–ST002).
 
-The Configuration selector supports **Project**, **None**, and **Custom TOML**. Project mode checks exactly one location: `<target directory>/pyproject.toml` for a directory target, or `<selected file parent>/pyproject.toml` for a file. It does not search ancestor directories. This target-root behavior is a Desktop UI policy and intentionally differs from the CLI's current-working-directory discovery.
+Configuration changes in the GUI are temporary and are not written back to project files. The app has no scan cancellation, installer, auto-update, telemetry, source-editor integration, or network upload.
 
-None mode uses all 11 default rules, no exclusions, and no fail threshold. Custom TOML uses the StatGuard v1.0.0 loader and accepts only the Core-supported `[tool.statguard]` keys: `exclude`, `disable-rules`, and `fail-on`. Invalid config is shown in the app and prevents scanning until a valid configuration is loaded. Loaded settings initialize the UI; rules, exclusions, and fail-on may then be temporarily changed. The Desktop app never writes configuration back to `pyproject.toml`.
+## Safety and limits
 
-All rules ML001–ML009 and ST001–ST002 are listed with registry-provided names and descriptions. Use Enable All, Disable All, or Reset to Config; the enabled-rule count updates as checkboxes change. Exclusions are relative to the scanned directory and reject absolute paths or `..` traversal. Exclusions apply only to directory scans. Fail-on supports None, Warning, and Error; it reports threshold state in the UI and never closes the application.
+StatGuard Desktop performs static analysis. It does not execute submitted Python source or Notebook code and does not analyze Notebook outputs. A clean scan does not prove statistical correctness. The analyzer supports explicit static patterns; it does not infer across files or Notebook cells beyond the Core's documented capabilities.
 
-### Finding filters and reports
-
-The table can be filtered by rule, severity, confidence, and file, and searched case-insensitively across the rule ID, path, message, explanation, suggestion, and evidence. Filters and table sorting affect only presentation; exports contain the complete scan report, not only visible rows.
-
-HTML, JSON schema 1.0, and SARIF 2.1.0 are rendered by the pinned Core reporter from the same completed scan. Exporting does not rescan. HTML can be opened with the Windows default browser; JSON and SARIF are saved locally.
-
-Findings are static-analysis signals, not proof that a workflow executed or that a statistical result is wrong. A clean scan does not establish statistical correctness.
-
-StatGuard reads source and Notebook code as data. It does not execute scanned Python or Notebook cells and does not inspect Notebook output content. Notebook cells are analyzed independently; document order is not proof of historical execution order.
+The v0.1.0 binary supports Windows x64 only; there are no supported ARM64, 32-bit, macOS, or Linux Desktop binaries. The application has no automatic updates.
 
 ## Development
 
-Requires Python 3.11 or later. A development environment can install the pinned engine and desktop dependencies with:
-
-```powershell
-py -3.12 -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-python -m statguard_desktop
-```
-
-Run the checks with:
-
-```powershell
-python -m pytest
-python -m ruff check .
-python -m ruff format --check .
-```
-
-Build the Windows one-file, windowed executable with:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
-```
-
-The output is `dist\StatGuardDesktop.exe`. The PyInstaller bundle includes the pinned StatGuard engine and Qt runtime; users do not need a separate Python or StatGuard installation. Windows is required to build and run the `.exe`; unit tests can also run on other supported Python platforms.
-
-The build currently constrains PySide6 to the tested 6.8 series (`>=6.8.3,<6.9`): newer Qt wheels did not load in the validated one-file PyInstaller environment. Expanding the Qt range requires repeating the frozen-executable launch smoke test.
-
-The executable supports hidden packaging checks used by maintainers:
-
-```powershell
-.\dist\StatGuardDesktop.exe --smoke-test .\desktop-smoke.json
-.\dist\StatGuardDesktop.exe --scan-smoke .\sample.py .\scan-smoke.json
-.\dist\StatGuardDesktop.exe --engine-info .\engine-info.json
-```
+Source/development installation supports CPython **3.11–3.13**. PySide6 is constrained to `>=6.8.3,<6.9`; its 6.8.3 metadata excludes Python 3.14. Windows x64 is required to build and run the frozen executable. See [Windows distribution notes](docs/windows-distribution.md) and [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Core project
 
-StatGuard core: <https://github.com/hyynb666/statguard> · [v1.0.0 release](https://github.com/hyynb666/statguard/releases/tag/v1.0.0)
-
-This desktop project is maintained separately from the core repository. It does not publish a core release, create tags, upload packages, or change core versioning.
-
-## Current limits
-
-The application has no installer or code signing, auto-update, recent-file list, dark-mode-specific theme, or source-editor integration. Configuration changes are temporary UI overrides and are never saved back to project files.
+StatGuard Core: <https://github.com/hyynb666/statguard> · [v1.0.0 release](https://github.com/hyynb666/statguard/releases/tag/v1.0.0)

@@ -207,7 +207,7 @@ def test_about_dialog_displays_desktop_and_engine_versions(application, monkeypa
     monkeypatch.setattr(QMessageBox, "about", lambda *_args: messages.append(_args[-1]))
     window = MainWindow()
     window._show_about()
-    assert "Desktop 0.1.0.dev0" in messages[0]
+    assert "Desktop 0.1.0" in messages[0]
     assert "Engine StatGuard 1.0.0" in messages[0]
     assert "MIT License" in messages[0]
     assert "github.com/hyynb666/statguard" in messages[0]
