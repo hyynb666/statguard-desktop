@@ -25,6 +25,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install Qt runtime libraries on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes libegl1 libgl1
       - name: Install package and development dependencies
         run: python -m pip install -e ".[dev]"
       - name: Run tests
